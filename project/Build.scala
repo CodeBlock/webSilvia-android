@@ -15,7 +15,8 @@ object General {
       "org.scalaz" %% "scalaz-core" % "7.0.4",
       "org.scalaz" %% "scalaz-effect" % "7.0.4",
       "org.scalaz" %% "scalaz-concurrent" % "7.0.4",
-      "com.google.zxing" % "android-integration" % "3.1.0"
+      "com.google.zxing" % "android-integration" % "3.1.0",
+      "com.github.nkzawa" % "socket.io-client" % "0.1.1"
     ),
     scalacOptions         := Seq(
       "-encoding", "utf8",

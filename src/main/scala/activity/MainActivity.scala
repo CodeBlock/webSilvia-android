@@ -14,6 +14,9 @@ import scalaz.effect.IO
 
 import com.google.zxing.integration.android.{ IntentIntegrator, IntentResult }
 
+import com.github.nkzawa.emitter.Emitter
+import com.github.nkzawa.socketio.client.{ IO => WSIO, Socket }
+
 import scala.language.implicitConversions // lolscala
 
 object Implicits {
@@ -44,13 +47,18 @@ class MainActivity extends Activity with TypedViewHolder {
 
   override def onActivityResult(requestCode: Int, resultCode: Int, intent: Intent): Unit = {
     val result = Option(IntentIntegrator.parseActivityResult(
-      requestCode, resultCode, intent)).flatMap(e => Option(e.getContents))
+      requestCode, resultCode, intent))
+      .flatMap(e => Option(e.getContents))
+      .filter(_.contains("#"))
     result.map { r =>
+      Log.e("MainActivity", "Ohai!!")
       // At this point, we have a successful scan and we can attempt to connect.
-      new AlertDialog.Builder(this)
-        .setTitle("QR Code Result")
-        .setMessage(r)
-        .show
+      val List(url, hash) = r.split("#", 2).toList
+      val socket = WSIO.socket(url)
+      Log.e("MainActivity", "CONNECTING!")
+      socket.connect
+      Log.e("MainActivity", "CONNECTEDISH!")
+      socket.emit("foo", "hi")
     }
     ()
   }
