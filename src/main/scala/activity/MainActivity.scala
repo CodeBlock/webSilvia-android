@@ -17,6 +17,8 @@ import com.google.zxing.integration.android.{ IntentIntegrator, IntentResult }
 import com.github.nkzawa.emitter.Emitter
 import com.github.nkzawa.socketio.client.{ IO => WSIO, Socket }
 
+import org.json.JSONObject /* UGH! */
+
 import scala.language.implicitConversions // lolscala
 
 object Implicits {
@@ -55,6 +57,21 @@ class MainActivity extends Activity with TypedViewHolder {
       // At this point, we have a successful scan and we can attempt to connect.
       val List(url, hash) = r.split("#", 2).toList
       val socket = WSIO.socket(url)
+      socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
+        override def call(xs: Object*): Unit = {
+          val j = new JSONObject
+          j.put("connID", hash)
+          socket.emit("login", j)
+          ()
+        }
+      })
+      // TODO: This callback isn't actually getting called.
+      socket.on("loggedin", new Emitter.Listener() {
+        override def call(xs: Object*): Unit = {
+          Log.e("mainactivity", "loggedin")
+          ()
+        }
+      })
       Log.e("MainActivity", "CONNECTING!")
       socket.connect
       Log.e("MainActivity", "CONNECTEDISH!")
