@@ -2,10 +2,11 @@ package me.elrod.websilviaandroid
 
 import android.app.{ Activity, AlertDialog }
 import android.content.{ Context, Intent }
+import android.nfc.{ NfcAdapter, Tag }
 import android.os.Bundle
 import android.util.Log
 import android.view.{ Menu, MenuInflater, MenuItem, View, Window }
-import android.widget.{ ArrayAdapter, ProgressBar, TextView, ScrollView }
+import android.widget.{ ArrayAdapter, ProgressBar, TextView, Toast }
 
 import scalaz._, Scalaz._
 import scalaz.concurrent.Promise
@@ -32,6 +33,9 @@ object Implicits {
 import Implicits._
 
 class MainActivity extends Activity with TypedViewHolder {
+
+  lazy val nfcForegroundUtil = new AnnoyingNFCStuff(this)
+
   override def onPostCreate(bundle: Bundle): Unit = {
     super.onPostCreate(bundle)
     setContentView(R.layout.main_activity)
@@ -84,11 +88,46 @@ class MainActivity extends Activity with TypedViewHolder {
         }
 
         override def onDisconnect(): Unit = { }
-        override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {}
+        override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit =
+          event match {
+            case "loggedin" => readyForSwipe(socket)
+            case x          => Log.d("MainActivity", s"Received unhandled $x message.")
+          }
       })
       ()
     }
     ()
+  }
+
+  def readyForSwipe(s: SocketIO): Unit = {
+    nfcForegroundUtil.enableForeground
+  }
+
+  override def onNewIntent(intent: Intent): Unit = {
+    val tag: Tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
+    new AlertDialog.Builder(this)
+      .setTitle("Swipe successful!")
+      .setMessage(tag.toString)
+      .show
+    ()
+  }
+
+  override def onPause(): Unit = {
+    super.onPause
+    nfcForegroundUtil.disableForeground
+  }
+
+  override def onResume(): Unit = {
+    super.onResume
+    nfcForegroundUtil.enableForeground
+
+    if (!nfcForegroundUtil.nfc.isEnabled) {
+      Toast.makeText(
+        this,
+        "Please activate NFC and press Back to return to the application!",
+        Toast.LENGTH_LONG).show()
+        startActivity(new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))
+    }
   }
 
   override def onOptionsItemSelected(item: MenuItem): Boolean = {
