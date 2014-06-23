@@ -9,14 +9,15 @@ object General {
     version := "0.1",
     scalaVersion := "2.10.4",
     resolvers             ++= Seq(
-      "sonatype-s" at "http://oss.sonatype.org/content/repositories/snapshots"
+      "sonatype-s" at "http://oss.sonatype.org/content/repositories/snapshots",
+      "audiobox" at "http://audiobox.keytwo.net"
     ),
     libraryDependencies   ++= Seq(
       "org.scalaz" %% "scalaz-core" % "7.0.4",
       "org.scalaz" %% "scalaz-effect" % "7.0.4",
       "org.scalaz" %% "scalaz-concurrent" % "7.0.4",
       "com.google.zxing" % "android-integration" % "3.1.0",
-      "com.github.nkzawa" % "socket.io-client" % "0.1.1"
+      "io.socket" % "socket.io-client" % "0.2.1"
     ),
     scalacOptions         := Seq(
       "-encoding", "utf8",

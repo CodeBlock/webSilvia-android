@@ -14,10 +14,9 @@ import scalaz.effect.IO
 
 import com.google.zxing.integration.android.{ IntentIntegrator, IntentResult }
 
-import com.github.nkzawa.emitter.Emitter
-import com.github.nkzawa.socketio.client.{ IO => WSIO, Socket }
+import io.socket.{ IOAcknowledge, IOCallback, SocketIO, SocketIOException }
 
-import org.json.JSONObject /* UGH! */
+import com.google.gson.{ JsonElement, JsonObject } /* UGH! */
 
 import scala.language.implicitConversions // lolscala
 
@@ -53,29 +52,43 @@ class MainActivity extends Activity with TypedViewHolder {
       .flatMap(e => Option(e.getContents))
       .filter(_.contains("#"))
     result.map { r =>
-      Log.e("MainActivity", "Ohai!!")
+
       // At this point, we have a successful scan and we can attempt to connect.
       val List(url, hash) = r.split("#", 2).toList
-      val socket = WSIO.socket(url)
-      socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
-        override def call(xs: Object*): Unit = {
-          val j = new JSONObject
-          j.put("connID", hash)
-          socket.emit("login", j)
+      val socket = new SocketIO(url)
+      socket.connect(new IOCallback() {
+        override def onMessage(json: JsonElement, ack: IOAcknowledge): Unit = {
+          new AlertDialog.Builder(MainActivity.this)
+            .setTitle("Message from server!")
+            .setMessage(json.toString)
+            .show
           ()
         }
-      })
-      // TODO: This callback isn't actually getting called.
-      socket.on("loggedin", new Emitter.Listener() {
-        override def call(xs: Object*): Unit = {
-          Log.e("mainactivity", "loggedin")
+
+        override def onMessage(data: String, ack: IOAcknowledge): Unit = {
+          new AlertDialog.Builder(MainActivity.this)
+            .setTitle("Message from server!")
+            .setMessage(data)
+            .show
           ()
         }
+
+        override def onError(err: SocketIOException): Unit =
+          err.printStackTrace
+
+        override def onConnect(): Unit = {
+          val j = new JsonObject
+          val k = new JsonObject
+          k.addProperty("connID", hash)
+          j.add("login", k)
+          socket.send(j)
+          ()
+        }
+
+        override def onDisconnect(): Unit = { }
+        override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {}
       })
-      Log.e("MainActivity", "CONNECTING!")
-      socket.connect
-      Log.e("MainActivity", "CONNECTEDISH!")
-      socket.emit("foo", "hi")
+      ()
     }
     ()
   }
