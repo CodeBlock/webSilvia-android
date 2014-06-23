@@ -78,10 +78,8 @@ class MainActivity extends Activity with TypedViewHolder {
 
         override def onConnect(): Unit = {
           val j = new JsonObject
-          val k = new JsonObject
-          k.addProperty("connID", hash)
-          j.add("login", k)
-          socket.send(j)
+          j.addProperty("connID", hash)
+          socket.emit("login", j)
           ()
         }
 
