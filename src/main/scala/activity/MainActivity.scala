@@ -3,6 +3,7 @@ package me.elrod.websilviaandroid
 import android.app.{ Activity, AlertDialog }
 import android.content.{ Context, Intent }
 import android.nfc.{ NfcAdapter, Tag }
+import android.nfc.tech.IsoDep
 import android.os.Bundle
 import android.util.Log
 import android.view.{ Menu, MenuInflater, MenuItem, View, Window }
@@ -35,6 +36,9 @@ import Implicits._
 class MainActivity extends Activity with TypedViewHolder {
 
   lazy val nfcForegroundUtil = new AnnoyingNFCStuff(this)
+  // yeah, this is shit, but it needs to be readable by the intent handler…
+  var s: Option[SocketIO] = None
+  var isodep: Option[IsoDep] = None // so is this
 
   override def onPostCreate(bundle: Bundle): Unit = {
     super.onPostCreate(bundle)
@@ -59,7 +63,9 @@ class MainActivity extends Activity with TypedViewHolder {
 
       // At this point, we have a successful scan and we can attempt to connect.
       val List(url, hash) = r.split("#", 2).toList
+
       val socket = new SocketIO(url)
+
       socket.connect(new IOCallback() {
         override def onMessage(json: JsonElement, ack: IOAcknowledge): Unit = {
           new AlertDialog.Builder(MainActivity.this)
@@ -91,20 +97,44 @@ class MainActivity extends Activity with TypedViewHolder {
         override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit =
           event match {
             case "loggedin" => readyForSwipe(socket)
+            case "card_request" => handleCardRequest(socket, args)
             case x          => Log.d("MainActivity", s"Received unhandled $x message.")
           }
       })
+      s = Some(socket) // yeah, this is shit
       ()
+    }
+    ()
+  }
+
+  def sendToCard(str: String): String = {
+    str // TODO
+  }
+
+  def handleCardRequest(socket: SocketIO, args: Seq[JsonElement]): Unit = {
+    val request = args.headOption.map(_.getAsJsonObject.get("data").getAsString)
+    request.map { r =>
+      val response = sendToCard(r)
+      if (r.startsWith("response")) {
+        val j = new JsonObject
+        j.addProperty("data", response)
+        s.map(_.emit("card_response", j))
+      }
     }
     ()
   }
 
   def readyForSwipe(s: SocketIO): Unit = {
     nfcForegroundUtil.enableForeground
+    // Do some UI thing to show "ready for card swipe"
   }
 
   override def onNewIntent(intent: Intent): Unit = {
     val tag: Tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
+    isodep = Some(IsoDep.get(tag))
+    isodep.map(_.connect)
+    s.map(_.emit("card_connected", new JsonObject))
+
     new AlertDialog.Builder(this)
       .setTitle("Swipe successful!")
       .setMessage(tag.toString)

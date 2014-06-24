@@ -5,7 +5,6 @@ import android.content.{ Intent, IntentFilter }
 import android.nfc.NfcAdapter
 import android.nfc.tech.IsoDep
 
-
 import scala.language.implicitConversions // lolscala
 
 class AnnoyingNFCStuff(activity: Activity) {
