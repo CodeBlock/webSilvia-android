@@ -94,12 +94,14 @@ class MainActivity extends Activity with TypedViewHolder {
         }
 
         override def onDisconnect(): Unit = { }
-        override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit =
+        override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {
           event match {
             case "loggedin" => readyForSwipe(socket)
             case "card_request" => handleCardRequest(socket, args)
             case x          => Log.d("MainActivity", s"Received unhandled $x message.")
           }
+          ()
+        }
       })
       s = Some(socket) // yeah, this is shit
       ()
@@ -107,18 +109,20 @@ class MainActivity extends Activity with TypedViewHolder {
     ()
   }
 
-  def sendToCard(str: String): String = {
-    str // TODO
-  }
+  def sendToCard(bytes: Array[Byte]): Option[Array[Byte]] =
+    isodep.map(_.transceive(bytes))
 
   def handleCardRequest(socket: SocketIO, args: Seq[JsonElement]): Unit = {
     val request = args.headOption.map(_.getAsJsonObject.get("data").getAsString)
     request.map { r =>
-      val response = sendToCard(r)
-      if (r.startsWith("response")) {
-        val j = new JsonObject
-        j.addProperty("data", response)
-        s.map(_.emit("card_response", j))
+      val responseOpt = sendToCard(r.getBytes)
+      responseOpt.map { resp =>
+        val respStr = new String(resp)
+        if (respStr.startsWith("response")) {
+          val j = new JsonObject
+          j.addProperty("data", respStr)
+          s.map(_.emit("card_response", j))
+        }
       }
     }
     ()
