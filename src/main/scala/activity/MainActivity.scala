@@ -64,7 +64,7 @@ class MainActivity extends Activity with TypedViewHolder {
       // At this point, we have a successful scan and we can attempt to connect.
       val List(url, hash) = r.split("#", 2).toList
 
-      val socket = new SocketIO(url)
+      val socket = new SocketIO(url + "/irma")
 
       socket.connect(new IOCallback() {
         override def onMessage(json: JsonElement, ack: IOAcknowledge): Unit = {
