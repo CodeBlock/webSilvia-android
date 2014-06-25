@@ -95,6 +95,7 @@ class MainActivity extends Activity with TypedViewHolder {
 
         override def onDisconnect(): Unit = { }
         override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {
+          Log.d("MainActivity", s"Received ${event} event with args: ${args.toString}")
           event match {
             case "loggedin" => readyForSwipe(socket)
             case "card_request" => handleCardRequest(socket, args)
@@ -121,6 +122,7 @@ class MainActivity extends Activity with TypedViewHolder {
         if (respStr.startsWith("response")) {
           val j = new JsonObject
           j.addProperty("data", respStr)
+          Log.d("MainActivity", "emitting card_response")
           s.map(_.emit("card_response", j))
         }
       }
@@ -137,6 +139,7 @@ class MainActivity extends Activity with TypedViewHolder {
     val tag: Tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
     isodep = Some(IsoDep.get(tag))
     isodep.map(_.connect)
+    Log.d("MainActivity", "emitting card_connected")
     s.map(_.emit("card_connected", new JsonObject))
 
     new AlertDialog.Builder(this)
