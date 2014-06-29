@@ -86,7 +86,9 @@ class MainActivity extends Activity with TypedViewHolder {
         override def onError(err: SocketIOException): Unit =
           err.printStackTrace
 
-        override def onConnect(): Unit = {
+        override def onConnect(): Unit = { }
+
+        private def handleConnected(): Unit = {
           val j = new JsonObject
           j.addProperty("connID", hash)
           socket.emit("login", j)
@@ -97,9 +99,10 @@ class MainActivity extends Activity with TypedViewHolder {
         override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {
           Log.d("MainActivity", s"Received ${event} event with args: ${args.toString}")
           event match {
-            case "loggedin" => readyForSwipe(socket)
+            case "connected"    => handleConnected
+            case "loggedin"     => readyForSwipe(socket)
             case "card_request" => handleCardRequest(socket, args)
-            case x          => Log.d("MainActivity", s"Received unhandled $x message.")
+            case x              => Log.d("MainActivity", s"Received unhandled $x message.")
           }
           ()
         }
