@@ -144,6 +144,7 @@ class MainActivity extends Activity with TypedViewHolder {
   override def onNewIntent(intent: Intent): Unit = {
     val tag: Tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
     isodep = Some(IsoDep.get(tag))
+    isodep.map(_.setTimeout(10000))
     isodep.map(_.connect)
     Log.d("MainActivity", "emitting card_connected")
     s.map(_.emit("card_connected", new JsonObject))
