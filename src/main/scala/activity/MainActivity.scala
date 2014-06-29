@@ -154,6 +154,7 @@ class MainActivity extends Activity with TypedViewHolder {
   }
 
   def readyForSwipe(s: SocketIO): Unit = {
+    isodep.map(_ => s.emit("card_connected", new JsonObject))
     nfcForegroundUtil.enableForeground
     // Do some UI thing to show "ready for card swipe"
   }
