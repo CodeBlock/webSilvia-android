@@ -62,7 +62,9 @@ class MainActivity extends Activity with TypedViewHolder {
     result.map { r =>
 
       // At this point, we have a successful scan and we can attempt to connect.
-      val List(url, hash) = r.split("#", 2).toList
+      val splitUrl = r.split("#")
+      val url = splitUrl(0)
+      val hash = splitUrl(1)
 
       val socket = new SocketIO(url + "/irma")
 
@@ -95,6 +97,14 @@ class MainActivity extends Activity with TypedViewHolder {
           ()
         }
 
+        private def closeSuccess(): Unit = {
+          runOnUiThread(
+            Toast.makeText(
+              MainActivity.this,
+              "Finished. You can move your card now.",
+              Toast.LENGTH_LONG).show())
+        }
+
         override def onDisconnect(): Unit = { }
         override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {
           Log.d("MainActivity", s"Received ${event} event with args: ${args.toString}")
@@ -102,6 +112,7 @@ class MainActivity extends Activity with TypedViewHolder {
             case "connected"    => handleConnected
             case "loggedin"     => readyForSwipe(socket)
             case "card_request" => handleCardRequest(socket, args)
+            case "finished"     => closeSuccess
             case x              => Log.d("MainActivity", s"Received unhandled $x message.")
           }
           ()
@@ -110,6 +121,12 @@ class MainActivity extends Activity with TypedViewHolder {
       s = Some(socket) // yeah, this is shit
       ()
     }
+
+      Toast.makeText(
+        this,
+        "Touch your IRMA card to your phone and HOLD it there until told otherwise.",
+        Toast.LENGTH_LONG).show()
+
     ()
   }
 
