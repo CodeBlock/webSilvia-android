@@ -13,9 +13,9 @@ object General {
       "audiobox" at "http://audiobox.keytwo.net"
     ),
     libraryDependencies   ++= Seq(
-      "org.scalaz" %% "scalaz-core" % "7.0.4",
-      "org.scalaz" %% "scalaz-effect" % "7.0.4",
-      "org.scalaz" %% "scalaz-concurrent" % "7.0.4",
+      "org.scalaz" %% "scalaz-core" % "7.1.0-RC1",
+      "org.scalaz" %% "scalaz-effect" % "7.1.0-RC1",
+      "org.scalaz" %% "scalaz-concurrent" % "7.1.0-RC1",
       "com.google.zxing" % "android-integration" % "3.1.0",
       "io.socket" % "socket.io-client" % "0.2.1"
     ),

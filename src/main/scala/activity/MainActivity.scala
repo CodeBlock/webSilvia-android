@@ -117,16 +117,17 @@ class MainActivity extends Activity with TypedViewHolder {
     val request = args.headOption.map(_.getAsJsonObject.get("data").getAsString)
 
     request.map { r =>
-      // TODO: Should probably do better error handling here. What if we are
-      // given Some(Array())? We will currently fatal and force close.
-      val responseOpt = sendToCard(r.getBytes.tail.tail.init)
-        .map(_.map("%02X".format(_)).mkString)
-      Log.d("MainActivity", "Card response: " + responseOpt.get)
-      responseOpt.map { resp =>
-        val j = new JsonObject
-        j.addProperty("data", resp)
-        Log.d("MainActivity", "emitting card_response with data: " + resp)
-        s.map(_.emit("card_response", j))
+      val bytes = Hex.hexStringToBytes(r)
+      bytes.map { b =>
+        val responseOpt = sendToCard(b)
+          .map(_.map("%02X".format(_)).mkString)
+        Log.d("MainActivity", "Card response: " + responseOpt.get)
+        responseOpt.map { resp =>
+          val j = new JsonObject
+          j.addProperty("data", resp)
+          Log.d("MainActivity", "emitting card_response with data: " + resp)
+          s.map(_.emit("card_response", j))
+        }
       }
     }
     ()
