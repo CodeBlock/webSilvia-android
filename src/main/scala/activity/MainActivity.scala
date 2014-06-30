@@ -40,11 +40,14 @@ class MainActivity extends Activity with TypedViewHolder {
   var s: Option[SocketIO] = None
   var isodep: Option[IsoDep] = None // so is this
 
+  private def startQRScanner(): Unit = {
+    new IntentIntegrator(this).initiateScan(IntentIntegrator.QR_CODE_TYPES)
+  }
+
   override def onPostCreate(bundle: Bundle): Unit = {
     super.onPostCreate(bundle)
     setContentView(R.layout.main_activity)
-    val integrator = new IntentIntegrator(this)
-    integrator.initiateScan(IntentIntegrator.QR_CODE_TYPES)
+    startQRScanner
     ()
   }
 
@@ -63,70 +66,78 @@ class MainActivity extends Activity with TypedViewHolder {
 
       // At this point, we have a successful scan and we can attempt to connect.
       val splitUrl = r.split("#")
-      val url = splitUrl(0)
-      val hash = splitUrl(1)
 
-      val socket = new SocketIO(url + "/irma")
+      if (splitUrl.length < 2) {
+        Toast.makeText(
+          MainActivity.this,
+          "Invalid QR code -- try again!",
+          Toast.LENGTH_LONG).show()
+        startQRScanner
+      } else {
+        val url = splitUrl(0)
+        val hash = splitUrl(1)
 
-      socket.connect(new IOCallback() {
-        override def onMessage(json: JsonElement, ack: IOAcknowledge): Unit = {
-          new AlertDialog.Builder(MainActivity.this)
-            .setTitle("Message from server!")
-            .setMessage(json.toString)
-            .show
-          ()
-        }
+        val socket = new SocketIO(url + "/irma")
 
-        override def onMessage(data: String, ack: IOAcknowledge): Unit = {
-          new AlertDialog.Builder(MainActivity.this)
-            .setTitle("Message from server!")
-            .setMessage(data)
-            .show
-          ()
-        }
-
-        override def onError(err: SocketIOException): Unit =
-          err.printStackTrace
-
-        override def onConnect(): Unit = { }
-
-        private def handleConnected(): Unit = {
-          val j = new JsonObject
-          j.addProperty("connID", hash)
-          socket.emit("login", j)
-          ()
-        }
-
-        private def closeSuccess(): Unit = {
-          runOnUiThread(
-            Toast.makeText(
-              MainActivity.this,
-              "Finished. You can move your card now.",
-              Toast.LENGTH_LONG).show())
-        }
-
-        override def onDisconnect(): Unit = { }
-        override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {
-          Log.d("MainActivity", s"Received ${event} event with args: ${args.toString}")
-          event match {
-            case "connected"    => handleConnected
-            case "loggedin"     => readyForSwipe(socket)
-            case "card_request" => handleCardRequest(socket, args)
-            case "finished"     => closeSuccess
-            case x              => Log.d("MainActivity", s"Received unhandled $x message.")
+        socket.connect(new IOCallback() {
+          override def onMessage(json: JsonElement, ack: IOAcknowledge): Unit = {
+            new AlertDialog.Builder(MainActivity.this)
+              .setTitle("Message from server!")
+              .setMessage(json.toString)
+              .show
+            ()
           }
-          ()
-        }
-      })
-      s = Some(socket) // yeah, this is shit
-      ()
+
+          override def onMessage(data: String, ack: IOAcknowledge): Unit = {
+            new AlertDialog.Builder(MainActivity.this)
+              .setTitle("Message from server!")
+              .setMessage(data)
+              .show
+            ()
+          }
+
+          override def onError(err: SocketIOException): Unit =
+            err.printStackTrace
+
+          override def onConnect(): Unit = { }
+
+          private def handleConnected(): Unit = {
+            val j = new JsonObject
+            j.addProperty("connID", hash)
+            socket.emit("login", j)
+            ()
+          }
+
+          private def closeSuccess(): Unit = {
+            runOnUiThread(
+              Toast.makeText(
+                MainActivity.this,
+                "Finished. You can move your card now.",
+                Toast.LENGTH_LONG).show())
+          }
+
+          override def onDisconnect(): Unit = { }
+          override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {
+            Log.d("MainActivity", s"Received ${event} event with args: ${args.toString}")
+            event match {
+              case "connected"    => handleConnected
+              case "loggedin"     => readyForSwipe(socket)
+              case "card_request" => handleCardRequest(socket, args)
+              case "finished"     => closeSuccess
+              case x              => Log.d("MainActivity", s"Received unhandled $x message.")
+            }
+            ()
+          }
+        })
+        s = Some(socket) // yeah, this is shit
+        ()
+      }
+
+        Toast.makeText(
+          this,
+          "Touch your IRMA card to your phone and HOLD it there until told otherwise.",
+          Toast.LENGTH_LONG).show()
     }
-
-      Toast.makeText(
-        this,
-        "Touch your IRMA card to your phone and HOLD it there until told otherwise.",
-        Toast.LENGTH_LONG).show()
-
     ()
   }
 
