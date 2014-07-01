@@ -18,7 +18,7 @@ import com.google.zxing.integration.android.{ IntentIntegrator, IntentResult }
 
 import io.socket.{ IOAcknowledge, IOCallback, SocketIO, SocketIOException }
 
-import com.google.gson.{ JsonElement, JsonObject } /* UGH! */
+import com.google.gson.{ JsonArray, JsonElement, JsonObject, JsonPrimitive } /* UGH! */
 
 import scala.language.implicitConversions // lolscala
 
@@ -42,6 +42,7 @@ class MainActivity extends Activity with TypedViewHolder {
 
   private def startQRScanner(): Unit = {
     new IntentIntegrator(this).initiateScan(IntentIntegrator.QR_CODE_TYPES)
+    ()
   }
 
   override def onPostCreate(bundle: Bundle): Unit = {
@@ -104,16 +105,25 @@ class MainActivity extends Activity with TypedViewHolder {
           private def handleConnected(): Unit = {
             val j = new JsonObject
             j.addProperty("connID", hash)
+            val arr = new JsonArray
+            arr.add(new JsonPrimitive("proxy-1"))
+            j.add("supportedVersions", arr)
             socket.emit("login", j)
             ()
           }
 
-          private def closeSuccess(): Unit = {
-            runOnUiThread(
-              Toast.makeText(
-                MainActivity.this,
-                "Finished. You can move your card now.",
-                Toast.LENGTH_LONG).show())
+          private def closeConnection(args: Seq[JsonElement]): Unit = {
+            def act(status: String) = status match {
+              case "error" => "An error has occurred, please try again later."
+              case _       => "Finished! You can now move your card."
+            }
+            args.headOption.map(s =>
+              runOnUiThread(
+                Toast.makeText(
+                  MainActivity.this,
+                  act(s.getAsJsonObject.get("status").getAsString),
+                  Toast.LENGTH_LONG).show()))
+            ()
           }
 
           override def onDisconnect(): Unit = { }
@@ -123,7 +133,7 @@ class MainActivity extends Activity with TypedViewHolder {
               case "connected"    => handleConnected
               case "loggedin"     => readyForSwipe(socket)
               case "card_request" => handleCardRequest(socket, args)
-              case "finished"     => closeSuccess
+              case "finished"     => closeConnection(args)
               case x              => Log.d("MainActivity", s"Received unhandled $x message.")
             }
             ()
