@@ -168,11 +168,11 @@ class MainActivity extends Activity with TypedViewHolder {
 
     alert.setPositiveButton("Authenticate", new DialogInterface.OnClickListener {
       def onClick(dialog: DialogInterface, button: Int): Unit = {
-        val hex = ("0020000008" ++ entry.getText.toString.flatMap(e => "3" ++ e.toString)).padTo(14, '0')
+        val hex = ("0020000008" ++ entry.getText.toString.flatMap(e => "3" ++ e.toString)).padTo(26, '0')
         val bytes = Hex.hexStringToBytes(hex)
         Log.d("MainActivity", "Sending " ++ hex ++ "to card.")
         bytes.flatMap(b => sendToCard(b).map(_.map("%02X".format(_)).mkString)) match {
-          case Some("9000") => s.map(_.emit("pin_correct", new JsonObject))
+          case Some("9000") => s.map(_.emit("pin_ok", new JsonObject))
           case Some("63C0") => {
             Toast.makeText(
               MainActivity.this,
