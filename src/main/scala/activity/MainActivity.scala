@@ -1,13 +1,15 @@
 package me.elrod.websilviaandroid
 
 import android.app.{ Activity, AlertDialog }
-import android.content.{ Context, Intent }
+import android.content.{ Context, DialogInterface, Intent }
+import android.content.res.Configuration
 import android.nfc.{ NfcAdapter, Tag }
 import android.nfc.tech.IsoDep
 import android.os.Bundle
+import android.text.InputType
 import android.util.Log
 import android.view.{ Menu, MenuInflater, MenuItem, View, Window }
-import android.widget.{ ArrayAdapter, ProgressBar, TextView, Toast }
+import android.widget.{ ArrayAdapter, EditText, ProgressBar, TextView, Toast }
 
 import scalaz._, Scalaz._
 import scalaz.concurrent.Promise
@@ -130,11 +132,12 @@ class MainActivity extends Activity with TypedViewHolder {
           override def on(event: String, ack: IOAcknowledge, args: JsonElement*): Unit = {
             Log.d("MainActivity", s"Received ${event} event with args: ${args.toString}")
             event match {
-              case "connected"    => handleConnected
-              case "loggedin"     => readyForSwipe(socket)
-              case "card_request" => handleCardRequest(socket, args)
-              case "finished"     => closeConnection(args)
-              case x              => Log.d("MainActivity", s"Received unhandled $x message.")
+              case "connected"         => handleConnected
+              case "loggedin"          => readyForSwipe(socket)
+              case "card_request"      => handleCardRequest(socket, args)
+              case "card_authenticate" => handleCardAuthenticate
+              case "finished"          => closeConnection(args)
+              case x                   => Log.d("MainActivity", s"Received unhandled $x message.")
             }
             ()
           }
@@ -153,6 +156,39 @@ class MainActivity extends Activity with TypedViewHolder {
 
   def sendToCard(bytes: Array[Byte]): Option[Array[Byte]] =
     isodep.map(_.transceive(bytes))
+
+  def handleCardAuthenticate(): Unit = {
+    val alert = new AlertDialog.Builder(this)
+    alert.setTitle("PIN Entry")
+    alert.setMessage("Enter your IRMA card PIN below.")
+
+    val entry = new EditText(this)
+    entry.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_TEXT_VARIATION_PASSWORD)
+    alert.setView(entry)
+
+    alert.setPositiveButton("Authenticate", new DialogInterface.OnClickListener {
+      def onClick(dialog: DialogInterface, button: Int): Unit = {
+        val hex = ("0020000008" ++ entry.getText.toString).padTo(14, '0')
+        Log.d("MainActivity", "Sending " ++ hex ++ "to card.")
+        val bytes = Hex.hexStringToBytes(hex)
+        bytes.flatMap(b => sendToCard(b).map(_.map("%02X".format(_)).mkString)) match {
+          case Some("9000") => s.map(_.emit("pin_correct", new JsonObject))
+          case Some("63C0") => {
+            Toast.makeText(
+              MainActivity.this,
+              "Card blocked - too many incorrect PIN attempts.",
+              Toast.LENGTH_LONG).show()
+          }
+          case Some(x)      => Log.d("MainActivity", "Got: " ++ x ++ " from card.")
+          case _            => // We got None back.
+        }
+        dialog.dismiss
+        ()
+      }
+    })
+    runOnUiThread(alert.show)
+    ()
+  }
 
   def handleCardRequest(socket: SocketIO, args: Seq[JsonElement]): Unit = {
     val request = args.headOption.map(_.getAsJsonObject.get("data").getAsString)
